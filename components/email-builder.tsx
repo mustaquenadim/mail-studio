@@ -26,9 +26,7 @@ import {
   Columns4,
   Copy,
   Eye,
-  File as FileIcon,
   FileCode,
-  FolderOpen,
   GalleryHorizontal,
   GripVertical,
   Heading1,
@@ -858,101 +856,6 @@ export function EmailBuilder() {
             </Tip>
           ))}
         </TabsList>
-        {view !== "code" && (
-          <div
-            role="group"
-            aria-label="Preview width"
-            className="flex items-center gap-0.5 rounded-lg border p-0.5"
-          >
-            {[
-              { label: "Desktop", v: "fill", icon: <Monitor /> },
-              {
-                label: `Mobile (${MOBILE_W}px)`,
-                v: String(MOBILE_W),
-                icon: <Smartphone />,
-              },
-            ].map(({ label, v, icon }) => (
-              <Tip key={v} label={label} side="bottom">
-                <Button
-                  size="icon-sm"
-                  variant={preset === v ? "secondary" : "ghost"}
-                  aria-label={label}
-                  aria-pressed={preset === v}
-                  onClick={() => applyPreset(v)}
-                >
-                  {icon}
-                </Button>
-              </Tip>
-            ))}
-            <DropdownMenu>
-              <Tip label="More sizes" side="bottom">
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      aria-label="More sizes"
-                    />
-                  }
-                >
-                  <ChevronDown />
-                </DropdownMenuTrigger>
-              </Tip>
-              <DropdownMenuContent
-                align="end"
-                className="w-56"
-                finalFocus={() => {
-                  if (!focusCustom.current) return true
-                  focusCustom.current = false
-                  return widthRef.current
-                }}
-              >
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Preview width</DropdownMenuLabel>
-                  <DropdownMenuRadioGroup
-                    value={preset}
-                    onValueChange={applyPreset}
-                  >
-                    {BREAKPOINTS.map(({ label, w, icon: BpIcon }) => (
-                      <DropdownMenuRadioItem
-                        key={label}
-                        value={w === null ? "fill" : String(w)}
-                      >
-                        <BpIcon className="text-muted-foreground" />
-                        {label}
-                        <span className="ms-auto text-xs text-muted-foreground tabular-nums">
-                          {w === null ? "Fill" : `${w}px`}
-                        </span>
-                      </DropdownMenuRadioItem>
-                    ))}
-                    <DropdownMenuRadioItem value="custom">
-                      <Ruler className="text-muted-foreground" />
-                      Custom…
-                    </DropdownMenuRadioItem>
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <div className="flex items-center gap-1 ps-1 pe-0.5 text-xs text-muted-foreground">
-              <PxInput
-                ref={widthRef}
-                label="Preview width in pixels (empty to fill)"
-                tip="Width (px). Empty fills the area."
-                value={size?.w}
-                min={280}
-                onCommit={setWidth}
-              />
-              ×
-              <PxInput
-                label="Preview height in pixels (empty for full height)"
-                tip="Height (px). Empty uses full height."
-                value={size?.h}
-                min={200}
-                onCommit={setHeight}
-              />
-            </div>
-          </div>
-        )}
         <span role="status" className="ms-auto text-sm text-muted-foreground">
           {msg}
         </span>
@@ -982,7 +885,6 @@ export function EmailBuilder() {
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button size="sm" variant="outline" />}>
-            <FolderOpen />
             File
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
@@ -1252,6 +1154,99 @@ export function EmailBuilder() {
               aria-label={VIEWS.find((v) => v.id === view)?.label}
               className="flex min-h-0 flex-1 flex-col gap-3 p-6"
             >
+              <div
+                role="group"
+                aria-label="Preview width"
+                className="flex items-center gap-0.5 self-center rounded-lg border bg-background p-0.5"
+              >
+                {[
+                  { label: "Desktop", v: "fill", icon: <Monitor /> },
+                  {
+                    label: `Mobile (${MOBILE_W}px)`,
+                    v: String(MOBILE_W),
+                    icon: <Smartphone />,
+                  },
+                ].map(({ label, v, icon }) => (
+                  <Tip key={v} label={label} side="bottom">
+                    <Button
+                      size="icon-sm"
+                      variant={preset === v ? "secondary" : "ghost"}
+                      aria-label={label}
+                      aria-pressed={preset === v}
+                      onClick={() => applyPreset(v)}
+                    >
+                      {icon}
+                    </Button>
+                  </Tip>
+                ))}
+                <DropdownMenu>
+                  <Tip label="More sizes" side="bottom">
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          size="icon-sm"
+                          variant="ghost"
+                          aria-label="More sizes"
+                        />
+                      }
+                    >
+                      <ChevronDown />
+                    </DropdownMenuTrigger>
+                  </Tip>
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-56"
+                    finalFocus={() => {
+                      if (!focusCustom.current) return true
+                      focusCustom.current = false
+                      return widthRef.current
+                    }}
+                  >
+                    <DropdownMenuGroup>
+                      <DropdownMenuLabel>Preview width</DropdownMenuLabel>
+                      <DropdownMenuRadioGroup
+                        value={preset}
+                        onValueChange={applyPreset}
+                      >
+                        {BREAKPOINTS.map(({ label, w, icon: BpIcon }) => (
+                          <DropdownMenuRadioItem
+                            key={label}
+                            value={w === null ? "fill" : String(w)}
+                          >
+                            <BpIcon className="text-muted-foreground" />
+                            {label}
+                            <span className="ms-auto text-xs text-muted-foreground tabular-nums">
+                              {w === null ? "Fill" : `${w}px`}
+                            </span>
+                          </DropdownMenuRadioItem>
+                        ))}
+                        <DropdownMenuRadioItem value="custom">
+                          <Ruler className="text-muted-foreground" />
+                          Custom…
+                        </DropdownMenuRadioItem>
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <div className="flex items-center gap-1 ps-1 pe-0.5 text-xs text-muted-foreground">
+                  <PxInput
+                    ref={widthRef}
+                    label="Preview width in pixels (empty to fill)"
+                    tip="Width (px). Empty fills the area."
+                    value={size?.w}
+                    min={280}
+                    onCommit={setWidth}
+                  />
+                  ×
+                  <PxInput
+                    label="Preview height in pixels (empty for full height)"
+                    tip="Height (px). Empty uses full height."
+                    value={size?.h}
+                    min={200}
+                    onCommit={setHeight}
+                  />
+                </div>
+              </div>
               {view === "edit" && (
                 // Envelope fields, like an email client's compose window.
                 <div className="mx-auto flex w-full max-w-3xl flex-col divide-y rounded-lg border bg-background text-sm">
@@ -1796,7 +1791,6 @@ function Templates({ onTemplate }: { onTemplate: (id: string) => void }) {
                 className="justify-start gap-2 font-normal"
                 onClick={() => onTemplate(t.id)}
               >
-                <FileIcon className="text-muted-foreground" />
                 {t.theme.name}
               </Button>
             ))}
