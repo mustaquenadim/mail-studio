@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type ComponentType,
+  type CSSProperties,
   type DragEvent,
   type Ref,
 } from "react"
@@ -33,7 +34,7 @@ import {
   Heading2,
   Heading3,
   ImageIcon,
-  LayoutGrid,
+  Frame,
   List,
   ListOrdered,
   Lock,
@@ -110,6 +111,7 @@ import {
 import { allBlocks } from "@/lib/checks"
 import { plainText } from "@/lib/rich"
 import { Tip } from "@/components/tip"
+import { AiChat } from "@/components/ai-chat"
 import { ThemeToggle } from "@/components/theme-provider"
 import { SettingsDialog } from "@/components/settings-dialog"
 import {
@@ -131,7 +133,6 @@ import {
 } from "@/components/ui/resizable"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useHistory } from "@/lib/history"
-import { useEditorPrefs } from "@/lib/editor-prefs"
 import {
   fromHtml,
   fromMarkdown,
@@ -336,6 +337,9 @@ const RANGES: Record<string, [number, number, number]> = {
   size: [10, 100, 5],
 }
 const KEY = "email-builder:doc"
+const CHAT_MIN = 260
+const CHAT_MAX = 640
+const clampChat = (w: number) => Math.min(CHAT_MAX, Math.max(CHAT_MIN, w))
 
 // The four editor modes, like mail-studio: Canvas (structure, drag blocks), Edit (type in place),
 // Preview (read-only, as recipients see it), Code (source with a live preview).
@@ -344,7 +348,7 @@ const VIEWS: { id: View; label: string; icon: Icon; tip: string }[] = [
   {
     id: "canvas",
     label: "Canvas",
-    icon: LayoutGrid,
+    icon: Frame,
     tip: "Arrange blocks: drag, select, reorder",
   },
   {
@@ -420,6 +424,7 @@ export function EmailBuilder() {
   const [dragId, setDragId] = useState<string | null>(null)
   const [msg, setMsg] = useState("")
   const [showBlocks, setShowBlocks] = useState(true)
+  const [chatW, setChatW] = useState(320)
   const [showProps, setShowProps] = useState(true)
   const fileRef = useRef<HTMLInputElement>(null)
   const frameRef = useRef<HTMLDivElement>(null)
@@ -821,6 +826,10 @@ export function EmailBuilder() {
     </ol>
   )
 
+  // AI output: a new email replaces the doc; an edit goes through applyCode (locked-block check).
+  const applyAi = (d: EmailDoc, edit: boolean) =>
+    edit ? applyCode(d) : load(d, "Generated with AI")
+
   return (
     // The whole layout is the Tabs root so the header's tab list stays linked to the panels in <main>.
     <Tabs
@@ -829,18 +838,16 @@ export function EmailBuilder() {
       className="grid h-svh grid-rows-[auto_1fr] gap-0"
     >
       <header className="relative flex flex-wrap items-center gap-2 border-b px-4 py-2">
-        {/* Side panels only exist in Canvas; Edit, Preview and Code use the full width. */}
-        {sidePanels && (
+        {/* Left panel in Canvas (blocks) and Edit (AI); Preview and Code use the full width. */}
+        {blockView && (
           <Tip
-            label={showBlocks ? "Hide blocks panel" : "Show blocks panel"}
+            label={showBlocks ? "Hide left panel" : "Show left panel"}
             side="bottom"
           >
             <Button
               size="icon-sm"
               variant="ghost"
-              aria-label={
-                showBlocks ? "Hide blocks panel" : "Show blocks panel"
-              }
+              aria-label={showBlocks ? "Hide left panel" : "Show left panel"}
               aria-pressed={showBlocks}
               onClick={() => setShowBlocks((s) => !s)}
             >
@@ -1081,16 +1088,6 @@ export function EmailBuilder() {
               value="templates"
               className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4"
             >
-              <AiPrompt
-                hasContent={doc.blocks.length > 0}
-                onDoc={(d, edit) => {
-                  if (!edit) return load(d, "Generated with AI")
-                  const err = applyCode(d)
-                  if (err) flash(err)
-                }}
-                current={doc}
-                onError={flash}
-              />
               <Templates
                 onTemplate={(id) => {
                   const t = THEMED.find((x) => x.id === id)
@@ -1152,6 +1149,40 @@ export function EmailBuilder() {
           </Tabs>
         )}
 
+        {/* Kept mounted (just hidden) so the chat survives tab switches. */}
+        <aside
+          className={cn(
+            "relative flex min-h-0 flex-col border-e max-lg:h-[60svh] lg:w-(--chat-w) lg:shrink-0",
+            !(view === "edit" && showBlocks) && "hidden"
+          )}
+          style={{ "--chat-w": `${chatW}px` } as CSSProperties}
+        >
+          <AiChat current={doc} onDoc={applyAi} />
+          {/* Drag (or arrow keys) to resize; pointer capture keeps the drag over the preview iframe. */}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize AI panel"
+            aria-valuenow={chatW}
+            aria-valuemin={CHAT_MIN}
+            aria-valuemax={CHAT_MAX}
+            tabIndex={0}
+            className="absolute inset-y-0 -end-1 z-10 w-2 cursor-col-resize outline-none hover:bg-ring/30 focus-visible:bg-ring/50 max-lg:hidden"
+            onPointerDown={(e) =>
+              e.currentTarget.setPointerCapture(e.pointerId)
+            }
+            onPointerMove={(e) => {
+              if (!e.currentTarget.hasPointerCapture(e.pointerId)) return
+              const left =
+                e.currentTarget.parentElement!.getBoundingClientRect().left
+              setChatW(clampChat(e.clientX - left))
+            }}
+            onKeyDown={(e) => {
+              const step = { ArrowLeft: -16, ArrowRight: 16 }[e.key]
+              if (step) setChatW((w) => clampChat(w + step))
+            }}
+          />
+        </aside>
         <main className="flex min-h-[60svh] flex-1 flex-col overflow-hidden bg-muted">
           <TabsContent value="code" className="flex min-h-0 flex-col">
             {isMobile ? (
@@ -1798,80 +1829,6 @@ function Fields({
           )
         })}
     </fieldset>
-  )
-}
-
-// Describe an email; /api/generate returns a schema-checked doc. "Edit" sends the current email along.
-function AiPrompt({
-  current,
-  hasContent,
-  onDoc,
-  onError,
-}: {
-  current: EmailDoc
-  hasContent: boolean
-  onDoc: (d: EmailDoc, edit: boolean) => void
-  onError: (message: string) => void
-}) {
-  const [prompt, setPrompt] = useState("")
-  const [busy, setBusy] = useState(false)
-  const prefs = useEditorPrefs()
-  const run = async (edit: boolean) => {
-    setBusy(true)
-    try {
-      const res = await fetch("/api/generate", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          prompt,
-          doc: edit ? current : undefined,
-          apiKey: prefs.aiKey || undefined,
-          model: prefs.aiModel,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) return onError(data.error ?? "Generation failed")
-      onDoc(data.doc, edit)
-    } catch {
-      onError("Generation failed: network error")
-    } finally {
-      setBusy(false)
-    }
-  }
-  return (
-    <section className="flex flex-col gap-2">
-      <h2 className="text-xs font-medium text-muted-foreground uppercase">
-        Generate with AI
-      </h2>
-      <Textarea
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        placeholder="A Black Friday sale email with a hero, three products and a big CTA"
-        rows={3}
-        disabled={busy}
-      />
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          className="flex-1"
-          disabled={busy || !prompt.trim()}
-          onClick={() => run(false)}
-        >
-          {busy ? "Generating…" : "Generate"}
-        </Button>
-        {hasContent && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="flex-1"
-            disabled={busy || !prompt.trim()}
-            onClick={() => run(true)}
-          >
-            Edit current
-          </Button>
-        )}
-      </div>
-    </section>
   )
 }
 

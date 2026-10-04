@@ -3,6 +3,7 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { generateText, Output, zodSchema } from "ai"
 import { DEFAULTS, parseDoc } from "@/lib/model"
+import { z } from "zod"
 import { emailDocSchema } from "@/lib/email-schema"
 
 export const maxDuration = 120
@@ -18,7 +19,11 @@ Rules:
 - Colors are #rrggbb. List-like fields are newline-separated; links are "Label | url" per line.
 - Text fields may use <b> <i> <u> <s> <a href="..."> and "\\n" for line breaks.
 - Images: use https://placehold.co/WIDTHxHEIGHT/png placeholders unless the user gives URLs.
-- Always set settings.subject and settings.preview. Write real, specific copy, not lorem ipsum.`
+- Always set settings.subject and settings.preview. Write real, specific copy, not lorem ipsum.
+- In "reply", tell the user in 1-4 short sentences or a short numbered list what you made or changed.`
+
+// The doc plus a short note for the chat panel.
+const outputSchema = z.object({ reply: z.string(), doc: emailDocSchema })
 
 export async function POST(request: Request) {
   if (!request.headers.get("content-type")?.startsWith("application/json"))
@@ -59,12 +64,12 @@ export async function POST(request: Request) {
         ? `Current email:\n${JSON.stringify(body.doc)}\n\nChange it as follows, keeping everything else: ${prompt}`
         : prompt,
       output: Output.object({
-        schema: zodSchema(emailDocSchema, { useReferences: true }),
+        schema: zodSchema(outputSchema, { useReferences: true }),
       }),
     })
-    const doc = parseDoc(JSON.stringify(output))
+    const doc = parseDoc(JSON.stringify(output.doc))
     if (!doc) return fail("The AI returned an invalid email. Try again.", 422)
-    return Response.json({ doc })
+    return Response.json({ doc, reply: output.reply })
   } catch (e) {
     return fail(e instanceof Error ? e.message : "Generation failed.", 502)
   }
