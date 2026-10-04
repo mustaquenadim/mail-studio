@@ -131,6 +131,7 @@ import {
 } from "@/components/ui/resizable"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useHistory } from "@/lib/history"
+import { useEditorPrefs } from "@/lib/editor-prefs"
 import {
   fromHtml,
   fromMarkdown,
@@ -149,6 +150,7 @@ const TEMPLATE_TYPES = Object.entries(Object.groupBy(THEMED, (t) => t.name))
 import {
   DEFAULT_SETTINGS,
   OPTIONS,
+  SCROLLBAR_CSS,
   TEXT_TYPES,
   convertBlock,
   duplicateBlock,
@@ -1079,6 +1081,16 @@ export function EmailBuilder() {
               value="templates"
               className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4"
             >
+              <AiPrompt
+                hasContent={doc.blocks.length > 0}
+                onDoc={(d, edit) => {
+                  if (!edit) return load(d, "Generated with AI")
+                  const err = applyCode(d)
+                  if (err) flash(err)
+                }}
+                current={doc}
+                onError={flash}
+              />
               <Templates
                 onTemplate={(id) => {
                   const t = THEMED.find((x) => x.id === id)
@@ -1156,7 +1168,10 @@ export function EmailBuilder() {
                   <div className="size-full p-4 ps-3">
                     <iframe
                       title="Live preview"
-                      srcDoc={html}
+                      srcDoc={html.replace(
+                        "</head>",
+                        `<style>${SCROLLBAR_CSS}</style></head>`
+                      )}
                       sandbox=""
                       className="size-full rounded-lg"
                     />
@@ -1297,21 +1312,17 @@ export function EmailBuilder() {
               <div className="flex min-h-0 flex-1 items-center justify-center">
                 <div
                   ref={frameRef}
-                  className={cn(
-                    "relative size-full max-h-full max-w-full",
-                    // A phone frame for narrow previews.
-                    view === "preview" &&
-                      size &&
-                      size.w <= 430 &&
-                      "overflow-hidden rounded-[2.5rem] border-[10px] border-neutral-900 shadow-xl"
-                  )}
+                  className="relative size-full max-h-full max-w-full"
                   style={size ? { width: size.w, height: size.h } : undefined}
                 >
                   {view === "preview" ? (
                     // Exactly what's exported: no edit markup, no scripts, links don't navigate away.
                     <iframe
                       title="Email preview (read-only)"
-                      srcDoc={html}
+                      srcDoc={html.replace(
+                        "</head>",
+                        `<style>${SCROLLBAR_CSS}</style></head>`
+                      )}
                       sandbox=""
                       className="size-full rounded-lg"
                     />
@@ -1787,6 +1798,80 @@ function Fields({
           )
         })}
     </fieldset>
+  )
+}
+
+// Describe an email; /api/generate returns a schema-checked doc. "Edit" sends the current email along.
+function AiPrompt({
+  current,
+  hasContent,
+  onDoc,
+  onError,
+}: {
+  current: EmailDoc
+  hasContent: boolean
+  onDoc: (d: EmailDoc, edit: boolean) => void
+  onError: (message: string) => void
+}) {
+  const [prompt, setPrompt] = useState("")
+  const [busy, setBusy] = useState(false)
+  const prefs = useEditorPrefs()
+  const run = async (edit: boolean) => {
+    setBusy(true)
+    try {
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          prompt,
+          doc: edit ? current : undefined,
+          apiKey: prefs.aiKey || undefined,
+          model: prefs.aiModel,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) return onError(data.error ?? "Generation failed")
+      onDoc(data.doc, edit)
+    } catch {
+      onError("Generation failed: network error")
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <section className="flex flex-col gap-2">
+      <h2 className="text-xs font-medium text-muted-foreground uppercase">
+        Generate with AI
+      </h2>
+      <Textarea
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        placeholder="A Black Friday sale email with a hero, three products and a big CTA"
+        rows={3}
+        disabled={busy}
+      />
+      <div className="flex gap-2">
+        <Button
+          size="sm"
+          className="flex-1"
+          disabled={busy || !prompt.trim()}
+          onClick={() => run(false)}
+        >
+          {busy ? "Generating…" : "Generate"}
+        </Button>
+        {hasContent && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1"
+            disabled={busy || !prompt.trim()}
+            onClick={() => run(true)}
+          >
+            Edit current
+          </Button>
+        )}
+      </div>
+    </section>
   )
 }
 

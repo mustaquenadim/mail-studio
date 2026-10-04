@@ -2,18 +2,23 @@
 
 import { useSyncExternalStore } from "react"
 
-// Code editor preferences, shared by every Monaco instance and the settings dialog. Lives outside
+// Code editor and AI preferences, shared by every Monaco instance and the settings dialog. Lives outside
 // components/monaco.tsx because importing that file pulls Monaco (and `window`) into the page.
 export type EditorPrefs = {
   fontSize: number
   wordWrap: boolean
   minimap: boolean
+  // OpenRouter, for "Generate with AI". Empty key = use the server's OPENROUTER_API_KEY.
+  aiKey: string
+  aiModel: string
 }
 
 export const EDITOR_DEFAULTS: EditorPrefs = {
   fontSize: 12,
   wordWrap: true,
   minimap: false,
+  aiKey: "",
+  aiModel: "anthropic/claude-sonnet-5.5",
 }
 
 const KEY = "email-builder:editor"
@@ -40,6 +45,12 @@ function read(): EditorPrefs {
       typeof saved.minimap === "boolean"
         ? saved.minimap
         : EDITOR_DEFAULTS.minimap,
+    aiKey:
+      typeof saved.aiKey === "string" ? saved.aiKey : EDITOR_DEFAULTS.aiKey,
+    aiModel:
+      typeof saved.aiModel === "string" && saved.aiModel
+        ? saved.aiModel
+        : EDITOR_DEFAULTS.aiModel,
   }
   return cache
 }

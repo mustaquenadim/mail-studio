@@ -11,12 +11,21 @@ importers:
       '@base-ui/react':
         specifier: ^1.8.0
         version: 1.8.0(@date-fns/tz@1.5.0)(@types/react@19.3.0)(date-fns@4.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@microsoft/clarity':
+        specifier: ^1.0.2
+        version: 1.0.2
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.57.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@openrouter/ai-sdk-provider':
+        specifier: ^3.1.0
+        version: 3.1.0(ai@7.0.127(zod@4.6.5))(zod@4.6.5)
       '@shadcn/react':
         specifier: ^0.3.1
         version: 0.3.1(@types/react@19.3.0)(react@19.2.8)
+      ai:
+        specifier: ^7.0.127
+        version: 7.0.127(zod@4.6.5)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -77,6 +86,9 @@ importers:
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4
@@ -113,6 +125,22 @@ importers:
         version: 5.9.3
 
 packages:
+
+  '@ai-sdk/gateway@4.0.103':
+    resolution: {integrity: sha512-nnGTUHzPRQ14jhv9CL4OQrzcRBIFTBMIPKGIi9Z9u/4GtwSRxa/nxUX6np2Iwp5phOzO0a0njj/j9Jolf5AEaA==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/provider-utils@5.0.53':
+    resolution: {integrity: sha512-VVe6UDd0y0/B4TfauuKKzcppqvhTmSluwwUVT4WG2/8h7gFbyFm7PM4UGM+ZXe3/RI6bv+Vl1cw/7aiBoQqdxg==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
+
+  '@ai-sdk/provider@4.0.21':
+    resolution: {integrity: sha512-UpbC9C1oht8dhfKPbVXSLRZS3DI8uk8n5v2uMjBPNIYGsC2kL045ywq7D8Hh9KgnH9rP5W/GxQdYtWScRouqlA==}
+    engines: {node: '>=22'}
 
   '@alloc/quick-lru@5.3.0':
     resolution: {integrity: sha512-U4+70Pc5ZS9osnCBCE5Jha/ciHM+Yp+CNMNC/7HvYbNRk1Ldd+f7qO65W5qfhu/TCv+/ozljlXXe9Nj8419DMA==}
@@ -712,6 +740,9 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
+  '@microsoft/clarity@1.0.2':
+    resolution: {integrity: sha512-9EZYROFpJxEGmQpHvUFqvD3ZJ7QQSqnibYSWmS+1xusoZfG1QQ1/Al9yVBBc11DWMbJrs1pe1hLT273it/skJg==}
+
   '@modelcontextprotocol/sdk@1.32.0':
     resolution: {integrity: sha512-8BviX/hK4Gd2eL1KdTwm0gfl4d3wdoErW0Jd00h6nomUAtk6IJk5vwQJc6kfWtJTzN5OEV/lgIiJKI8fiDGAlA==}
     engines: {node: '>=18'}
@@ -808,6 +839,13 @@ packages:
   '@nolyfill/is-core-module@1.0.39':
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
+
+  '@openrouter/ai-sdk-provider@3.1.0':
+    resolution: {integrity: sha512-BQy1TA9fKrh47s9ivsO6FY5QimN7GUF0i8Qon3pkxQclEgShso0dClpcWn8OIyPLEZZPFaFKgI8TW4S/O0p0Dw==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      ai: ^7.0.0
+      zod: ^3.25.76 || ^4.1.8
 
   '@radix-ui/primitive@1.1.7':
     resolution: {integrity: sha512-rqWnm76nYT8HoNNqEjpgJ7Pw/DrBj5iBTrmEPo6HTX5+VJyBNOqTdv4g89G63HuR5g0AaENoAcH7Is5fF2kZ8Q==}
@@ -1357,6 +1395,13 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@vercel/oidc@3.2.0':
+    resolution: {integrity: sha512-UycprH3T6n3jH0k44NHMa7pnFHGu/N05MjojYr+Mc6I7obkoLIJujSWwin1pCvdy/eOxrI/l3uDLQsmcrOb4ug==}
+    engines: {node: '>= 20'}
+
+  '@workflow/serde@4.1.0':
+    resolution: {integrity: sha512-pav4F2BoirECWR7Nf1TKt+2eETcBj7jj4cBefQ8VXQCA6NPkaKeLfj/zMgi+3zYV5ZIBT4GuUiphsj0/b9hPQQ==}
+
   accepts@1.3.8:
     resolution: {integrity: sha512-PYAthTa2m2VKxuvSD3DPC/Gy+U+sOA1LAuT8mkmRuvw+NACSaeXEQ+NHcVF7rONl6qcaxV3Uuemwawk+7+SJLw==}
     engines: {node: '>= 0.6'}
@@ -1374,6 +1419,12 @@ packages:
     resolution: {integrity: sha512-lGq+9yr1/GuAWaVYIHRjvvySG5/4VfKIvC8EWxStPdcDh/Ka7FG3twP6v4d5BkravUilhIAsG4Qj83t02LWUPQ==}
     engines: {node: '>=0.4.0'}
     hasBin: true
+
+  ai@7.0.127:
+    resolution: {integrity: sha512-JNsNPk4ZvRGEJuqdVo2lYFkm7uAuf3p/RwKFWn1Wh/+IK3U1RyFWw2GXoFnhzqNfxEuj7XJB4WpIUhl1sHToWg==}
+    engines: {node: '>=22'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4.1.8
 
   ajv-formats@2.1.1:
     resolution: {integrity: sha512-Wx0Kx52hxE7C18hkMEggYlEifqWZtYaRgouJor+WMdPnQyEK13vgEWyVNup7SoeeoLMsr4kf5h6dOW11I15MUA==}
@@ -2644,6 +2695,9 @@ packages:
   json-schema-typed@8.0.2:
     resolution: {integrity: sha512-fQhoXdcvc3V28x7C7BMs4P5+kNlgUURe2jmUT1T//oBRMDrqy1QPelJimwZGo7Hg9VPV3EQV5Bnq4hbFy2vetA==}
 
+  json-schema@0.4.0:
+    resolution: {integrity: sha512-es94M3nTIfsEPisRafak+HDLfHXnKBhV3vU5eqPcS3flIWqcxJWgXHXiey3YrpaNsanY5ei1VoYEbOzijuq9BA==}
+
   json-stable-stringify-without-jsonify@1.0.1:
     resolution: {integrity: sha512-Bdboy+l7tA3OGW6FjyFHWkP5LuByj1Tk33Ljyq0axyzdk9//JSi2u3fP1QSmd1KNwq6VOKYGlAu87CisVir6Pw==}
 
@@ -3905,6 +3959,26 @@ packages:
 
 snapshots:
 
+  '@ai-sdk/gateway@4.0.103(zod@4.6.5)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.21
+      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.5)
+      '@vercel/oidc': 3.2.0
+      zod: 4.6.5
+
+  '@ai-sdk/provider-utils@5.0.53(zod@4.6.5)':
+    dependencies:
+      '@ai-sdk/provider': 4.0.21
+      '@standard-schema/spec': 1.1.0
+      '@workflow/serde': 4.1.0
+      eventsource-parser: 3.1.1
+      undici: 7.30.0
+      zod: 4.6.5
+
+  '@ai-sdk/provider@4.0.21':
+    dependencies:
+      json-schema: 0.4.0
+
   '@alloc/quick-lru@5.3.0': {}
 
   '@babel/code-frame@7.29.7':
@@ -4472,6 +4546,8 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
 
+  '@microsoft/clarity@1.0.2': {}
+
   '@modelcontextprotocol/sdk@1.32.0(zod@3.25.76)':
     dependencies:
       '@hono/node-server': 2.1.3(hono@4.13.13)
@@ -4558,6 +4634,11 @@ snapshots:
       fastq: 1.20.3
 
   '@nolyfill/is-core-module@1.0.39': {}
+
+  '@openrouter/ai-sdk-provider@3.1.0(ai@7.0.127(zod@4.6.5))(zod@4.6.5)':
+    dependencies:
+      ai: 7.0.127(zod@4.6.5)
+      zod: 4.6.5
 
   '@radix-ui/primitive@1.1.7': {}
 
@@ -5075,6 +5156,10 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.12.2':
     optional: true
 
+  '@vercel/oidc@3.2.0': {}
+
+  '@workflow/serde@4.1.0': {}
+
   accepts@1.3.8:
     dependencies:
       mime-types: 2.1.35
@@ -5090,6 +5175,13 @@ snapshots:
       acorn: 8.18.0
 
   acorn@8.18.0: {}
+
+  ai@7.0.127(zod@4.6.5):
+    dependencies:
+      '@ai-sdk/gateway': 4.0.103(zod@4.6.5)
+      '@ai-sdk/provider': 4.0.21
+      '@ai-sdk/provider-utils': 5.0.53(zod@4.6.5)
+      zod: 4.6.5
 
   ajv-formats@2.1.1(ajv@8.20.0):
     optionalDependencies:
@@ -6534,6 +6626,8 @@ snapshots:
   json-schema-typed@7.0.3: {}
 
   json-schema-typed@8.0.2: {}
+
+  json-schema@0.4.0: {}
 
   json-stable-stringify-without-jsonify@1.0.1: {}
 

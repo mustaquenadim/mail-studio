@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { Settings } from "lucide-react"
 import { useTheme } from "next-themes"
 import {
@@ -22,6 +23,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -56,12 +58,36 @@ function resetLocalData() {
   location.reload()
 }
 
+// OpenRouter model ids that support structured outputs (the generator needs them). Public, CORS-enabled.
+function useModels(open: boolean) {
+  const [models, setModels] = useState<string[]>([])
+  useEffect(() => {
+    if (!open || models.length) return
+    fetch("https://openrouter.ai/api/v1/models")
+      .then((r) => r.json())
+      .then((d: { data: { id: string; supported_parameters?: string[] }[] }) =>
+        setModels(
+          d.data
+            .filter((m) =>
+              m.supported_parameters?.includes("structured_outputs")
+            )
+            .map((m) => m.id)
+            .sort()
+        )
+      )
+      .catch(() => {}) // Offline: the field still accepts any typed id.
+  }, [open, models.length])
+  return models
+}
+
 export function SettingsDialog() {
   const { theme, setTheme } = useTheme()
   const prefs = useEditorPrefs()
+  const [open, setOpen] = useState(false)
+  const models = useModels(open)
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <Tip label="Settings" side="bottom">
         <DialogTrigger
           render={
@@ -137,11 +163,49 @@ export function SettingsDialog() {
             />
           </div>
         </div>
+        <div className="grid gap-3 border-t pt-4">
+          <div className="grid gap-1">
+            <p className="text-sm font-medium">AI (OpenRouter)</p>
+            <p className="text-xs text-muted-foreground">
+              Used by Generate with AI. The key stays in this browser and is
+              sent only with generate requests.
+            </p>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="settings-ai-key">API key</Label>
+            <Input
+              id="settings-ai-key"
+              type="password"
+              autoComplete="off"
+              placeholder="sk-or-…"
+              value={prefs.aiKey}
+              onChange={(e) => setEditorPrefs({ aiKey: e.target.value.trim() })}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="settings-ai-model">Model</Label>
+            <Input
+              id="settings-ai-model"
+              list="settings-ai-models"
+              autoComplete="off"
+              value={prefs.aiModel}
+              onChange={(e) =>
+                setEditorPrefs({ aiModel: e.target.value.trim() })
+              }
+            />
+            <datalist id="settings-ai-models">
+              {models.map((m) => (
+                <option key={m} value={m} />
+              ))}
+            </datalist>
+          </div>
+        </div>
         <div className="flex items-center justify-between gap-4 border-t pt-4">
           <div className="grid gap-1">
             <p className="text-sm font-medium">Reset local data</p>
             <p className="text-xs text-muted-foreground">
-              Clears the saved draft, recent recipients and editor settings.
+              Clears the saved draft, recent recipients, editor settings and AI
+              key.
             </p>
           </div>
           <AlertDialog>
