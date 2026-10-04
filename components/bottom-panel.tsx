@@ -22,6 +22,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tip } from "@/components/tip"
 import { lint, spam, urlTargets, type Finding } from "@/lib/checks"
@@ -290,21 +297,25 @@ function SendForm({
           {field(
             "smtp-preset",
             "Preset",
-            <select
-              id="smtp-preset"
-              className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
-              value=""
-              onChange={(e) => {
-                const p = SMTP_PRESETS.find((x) => x.label === e.target.value)
+            <Select
+              value={null}
+              onValueChange={(v) => {
+                const p = SMTP_PRESETS.find((x) => x.label === v)
                 if (p)
                   setS({ host: p.host, port: String(p.port), secure: p.secure })
               }}
             >
-              <option value="">Choose…</option>
-              {SMTP_PRESETS.map((p) => (
-                <option key={p.label}>{p.label}</option>
-              ))}
-            </select>,
+              <SelectTrigger id="smtp-preset" className="w-full">
+                <SelectValue placeholder="Choose…" />
+              </SelectTrigger>
+              <SelectContent>
+                {SMTP_PRESETS.map((p) => (
+                  <SelectItem key={p.label} value={p.label}>
+                    {p.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>,
             "w-32"
           )}
           {field(

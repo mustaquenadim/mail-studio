@@ -846,7 +846,20 @@ export function EmailBuilder() {
             </Button>
           </Tip>
         )}
-        <h1 className="font-medium">Email builder</h1>
+        <div className="leading-tight">
+          <h1 className="font-medium">Mail Studio</h1>
+          <p className="text-xs text-muted-foreground">
+            by{" "}
+            <a
+              href="https://mustaquenadim.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline-offset-2 hover:text-foreground hover:underline"
+            >
+              mustaquenadim
+            </a>
+          </p>
+        </div>
         {/* Centered on wide screens; inline after the title where the sides would collide. */}
         <TabsList className="ms-2 xl:absolute xl:left-1/2 xl:ms-0 xl:-translate-x-1/2">
           {VIEWS.map(({ id, label, icon: ViewIcon, tip }) => (
