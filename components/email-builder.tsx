@@ -110,6 +110,8 @@ import {
 import { allBlocks } from "@/lib/checks"
 import { plainText } from "@/lib/rich"
 import { Tip } from "@/components/tip"
+import { ThemeToggle } from "@/components/theme-provider"
+import { SettingsDialog } from "@/components/settings-dialog"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -882,6 +884,8 @@ export function EmailBuilder() {
               <Redo2 />
             </Button>
           </Tip>
+          <ThemeToggle />
+          <SettingsDialog />
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger render={<Button size="sm" variant="outline" />}>
@@ -1141,7 +1145,7 @@ export function EmailBuilder() {
                       title="Live preview"
                       srcDoc={html}
                       sandbox=""
-                      className="size-full rounded-lg border bg-white"
+                      className="size-full rounded-lg"
                     />
                   </div>
                 </ResizablePanel>
@@ -1296,7 +1300,7 @@ export function EmailBuilder() {
                       title="Email preview (read-only)"
                       srcDoc={html}
                       sandbox=""
-                      className="size-full rounded-lg border bg-white"
+                      className="size-full rounded-lg"
                     />
                   ) : (
                     <EditablePreview
@@ -1314,7 +1318,7 @@ export function EmailBuilder() {
                       onCommand={insertFromSlash}
                       onDrop={dropPayload}
                       onKey={onKey}
-                      className="size-full rounded-lg border bg-white"
+                      className="size-full rounded-lg"
                     />
                   )}
                   {SIDES.map((side) => {

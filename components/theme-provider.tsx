@@ -2,7 +2,10 @@
 
 import * as React from "react"
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes"
+import { Moon, Sun } from "lucide-react"
 import { isTypingTarget } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { Tip } from "@/components/tip"
 
 function ThemeProvider({
   children,
@@ -56,4 +59,23 @@ function ThemeHotkey() {
   return null
 }
 
-export { ThemeProvider }
+// Icons swap via the `dark` class so server and client markup match before the theme resolves.
+function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme()
+
+  return (
+    <Tip label="Toggle theme (D)" side="bottom">
+      <Button
+        size="icon-sm"
+        variant="ghost"
+        aria-label="Toggle theme"
+        onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+      >
+        <Sun className="dark:hidden" />
+        <Moon className="hidden dark:block" />
+      </Button>
+    </Tip>
+  )
+}
+
+export { ThemeProvider, ThemeToggle }

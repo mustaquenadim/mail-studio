@@ -682,7 +682,8 @@ const EDIT_CSS = `
 [data-field]:empty{min-height:1em;min-width:2em}
 [data-drop-before]{box-shadow:inset 0 2px 0 #3b82f6}
 [data-drop-after]{box-shadow:inset 0 -2px 0 #3b82f6}
-[data-drop-inside]{box-shadow:inset 0 0 0 2px #3b82f6}`
+[data-drop-inside]{box-shadow:inset 0 0 0 2px #3b82f6}
+html{scrollbar-width:thin;scrollbar-color:rgb(128 128 128/.5) transparent}`
 // Canvas mode: every block outlined, so the structure is visible.
 const CANVAS_CSS = `[data-block]{outline:1px dashed #d4d4d8;outline-offset:-1px}[draggable=true]{cursor:grab}`
 

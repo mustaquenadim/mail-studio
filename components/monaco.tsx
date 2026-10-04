@@ -9,6 +9,7 @@ import * as ReactEmail from "react-email"
 import Editor, { loader } from "@monaco-editor/react"
 import * as monaco from "monaco-editor"
 import { useTheme } from "next-themes"
+import { useEditorPrefs } from "@/lib/editor-prefs"
 
 // Each `new Worker(new URL(...))` is written out in full: that exact form is what makes the bundler
 // build the worker with its imports. Building the URL first leaves it a bare file whose imports 404.
@@ -136,6 +137,7 @@ export default function CodeEditor({
   onSubmit?: (value: string) => void
 }) {
   const { resolvedTheme } = useTheme()
+  const prefs = useEditorPrefs()
   const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const syncing = useRef(false)
   const submit = useRef(onSubmit)
@@ -168,10 +170,10 @@ export default function CodeEditor({
       options={{
         readOnly,
         ariaLabel: label,
-        fontSize: 12,
+        fontSize: prefs.fontSize,
         tabSize: 2,
-        wordWrap: "on",
-        minimap: { enabled: false },
+        wordWrap: prefs.wordWrap ? "on" : "off",
+        minimap: { enabled: prefs.minimap },
         scrollBeyondLastLine: false,
         automaticLayout: true,
         formatOnPaste: true,
