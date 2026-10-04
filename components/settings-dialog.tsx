@@ -23,6 +23,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -75,7 +83,7 @@ function useModels(open: boolean) {
             .sort()
         )
       )
-      .catch(() => {}) // Offline: the field still accepts any typed id.
+      .catch(() => {}) // Offline: the dropdown still shows the saved model.
   }, [open, models.length])
   return models
 }
@@ -203,20 +211,32 @@ export function SettingsDialog() {
           </div>
           <div className="grid gap-2">
             <Label htmlFor="settings-ai-model">Model</Label>
-            <Input
-              id="settings-ai-model"
-              list="settings-ai-models"
-              autoComplete="off"
-              value={prefs.aiModel}
-              onChange={(e) =>
-                setEditorPrefs({ aiModel: e.target.value.trim() })
+            <Combobox
+              // Keep the saved model selectable while the list loads or if the fetch fails.
+              items={
+                models.includes(prefs.aiModel)
+                  ? models
+                  : [prefs.aiModel, ...models]
               }
-            />
-            <datalist id="settings-ai-models">
-              {models.map((m) => (
-                <option key={m} value={m} />
-              ))}
-            </datalist>
+              value={prefs.aiModel}
+              onValueChange={(v) => v && setEditorPrefs({ aiModel: v })}
+            >
+              <ComboboxInput
+                id="settings-ai-model"
+                className="w-full"
+                placeholder="Search models…"
+              />
+              <ComboboxContent>
+                <ComboboxEmpty>No models found.</ComboboxEmpty>
+                <ComboboxList>
+                  {(m: string) => (
+                    <ComboboxItem key={m} value={m}>
+                      {m}
+                    </ComboboxItem>
+                  )}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
           </div>
         </div>
         <div className="flex items-center justify-between gap-4 border-t pt-4">
