@@ -7,6 +7,8 @@ import {
   CircleCheck,
   CircleX,
   ExternalLink,
+  Map as MapIcon,
+  WrapText,
   Info,
   Link2,
   Send,
@@ -31,6 +33,13 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Tip } from "@/components/tip"
+import { Toggle } from "@/components/ui/toggle"
+import {
+  EDITOR_THEMES,
+  FONT_SIZES,
+  setEditorPrefs,
+  useEditorPrefs,
+} from "@/lib/editor-prefs"
 import { lint, spam, urlTargets, type Finding } from "@/lib/checks"
 import { compatibilityFindings, type CaniData } from "@/lib/compat"
 import { toReact, toText, type EmailDoc } from "@/lib/email"
@@ -473,13 +482,84 @@ const asList = (fs: Finding[]) =>
 // Results of a network check, tied to the HTML they were run against so stale ones are flagged.
 type Run<T> = { html: string; value: T }
 
+// Code tab only: the editor settings from Settings, a click away.
+function CodeSettings() {
+  const prefs = useEditorPrefs()
+  return (
+    <div className="me-1 flex items-center gap-1 border-e pe-2">
+      <Select
+        items={FONT_SIZES}
+        value={String(prefs.fontSize)}
+        onValueChange={(v) => v && setEditorPrefs({ fontSize: Number(v) })}
+      >
+        <Tip label="Editor font size" side="top">
+          <SelectTrigger
+            size="sm"
+            aria-label="Editor font size"
+            className="w-20"
+          >
+            <SelectValue />
+          </SelectTrigger>
+        </Tip>
+        <SelectContent>
+          {FONT_SIZES.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select
+        items={EDITOR_THEMES}
+        value={prefs.editorTheme}
+        onValueChange={(v) => v && setEditorPrefs({ editorTheme: v })}
+      >
+        <Tip label="Editor theme" side="top">
+          <SelectTrigger size="sm" aria-label="Editor theme" className="w-32">
+            <SelectValue />
+          </SelectTrigger>
+        </Tip>
+        <SelectContent>
+          {EDITOR_THEMES.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Tip label="Word wrap" side="top">
+        <Toggle
+          size="sm"
+          aria-label="Word wrap"
+          pressed={prefs.wordWrap}
+          onPressedChange={(wordWrap) => setEditorPrefs({ wordWrap })}
+        >
+          <WrapText />
+        </Toggle>
+      </Tip>
+      <Tip label="Minimap" side="top">
+        <Toggle
+          size="sm"
+          aria-label="Minimap"
+          pressed={prefs.minimap}
+          onPressedChange={(minimap) => setEditorPrefs({ minimap })}
+        >
+          <MapIcon />
+        </Toggle>
+      </Tip>
+    </div>
+  )
+}
+
 export function BottomPanel({
   doc,
   html,
+  codeView,
   onSelect,
 }: {
   doc: EmailDoc
   html: string
+  codeView: boolean
   onSelect: (id: string) => void
 }) {
   const [open, setOpen] = useState(false)
@@ -677,6 +757,7 @@ export function BottomPanel({
           ))}
         </TabsList>
         <div className="flex items-center gap-1">
+          {codeView && <CodeSettings />}
           <Tip
             label="Copy the check results and React source as a prompt"
             side="top"

@@ -34,18 +34,18 @@ import {
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Tip } from "@/components/tip"
-import { setEditorPrefs, useEditorPrefs } from "@/lib/editor-prefs"
+import {
+  EDITOR_THEMES,
+  FONT_SIZES,
+  setEditorPrefs,
+  useEditorPrefs,
+} from "@/lib/editor-prefs"
 
 const THEMES = [
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
   { value: "system", label: "System" },
 ]
-
-const FONT_SIZES = [11, 12, 13, 14, 15, 16].map((n) => ({
-  value: String(n),
-  label: `${n}px`,
-}))
 
 // Clears the draft, recipients and editor prefs. The theme has its own control, so it stays.
 function resetLocalData() {
@@ -139,6 +139,25 @@ export function SettingsDialog() {
               </SelectTrigger>
               <SelectContent>
                 {FONT_SIZES.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <Label htmlFor="settings-editor-theme">Theme</Label>
+            <Select
+              items={EDITOR_THEMES}
+              value={prefs.editorTheme}
+              onValueChange={(v) => v && setEditorPrefs({ editorTheme: v })}
+            >
+              <SelectTrigger id="settings-editor-theme" className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {EDITOR_THEMES.map((item) => (
                   <SelectItem key={item.value} value={item.value}>
                     {item.label}
                   </SelectItem>

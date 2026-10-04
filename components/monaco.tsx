@@ -156,7 +156,13 @@ export default function CodeEditor({
       defaultValue={value}
       language={language}
       path={path}
-      theme={resolvedTheme === "dark" ? "vs-dark" : "light"}
+      theme={
+        prefs.editorTheme !== "auto"
+          ? prefs.editorTheme
+          : resolvedTheme === "dark"
+            ? "vs-dark"
+            : "light"
+      }
       onChange={(v) => !syncing.current && onChange?.(v ?? "")}
       onMount={(ed, m) => {
         editor.current = ed

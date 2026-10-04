@@ -1465,6 +1465,7 @@ export function EmailBuilder() {
           <BottomPanel
             doc={doc}
             html={html}
+            codeView={view === "code"}
             onSelect={(id) => {
               setSelected(id)
               // Findings open the block's properties, which only Canvas shows.

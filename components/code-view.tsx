@@ -156,7 +156,7 @@ export function CodeView({
         setFormat(v as Format)
         cancel()
       }}
-      className="m-4 min-h-0 flex-1 gap-0 overflow-hidden rounded-lg border bg-background"
+      className="min-h-0 flex-1 gap-0 overflow-hidden bg-background"
     >
       <div className="flex items-center justify-between border-b bg-muted/40 pe-2">
         <TabsList variant="line" className="h-10 px-2">

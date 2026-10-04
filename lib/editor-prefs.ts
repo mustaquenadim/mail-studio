@@ -8,6 +8,8 @@ export type EditorPrefs = {
   fontSize: number
   wordWrap: boolean
   minimap: boolean
+  // "auto" follows the app's light/dark theme; the rest are Monaco's built-in themes.
+  editorTheme: string
   // OpenRouter, for "Generate with AI". Empty key = use the server's OPENROUTER_API_KEY.
   aiKey: string
   aiModel: string
@@ -17,9 +19,23 @@ export const EDITOR_DEFAULTS: EditorPrefs = {
   fontSize: 12,
   wordWrap: true,
   minimap: false,
+  editorTheme: "auto",
   aiKey: "",
   aiModel: "anthropic/claude-sonnet-5.5",
 }
+
+export const EDITOR_THEMES = [
+  { value: "auto", label: "Match app" },
+  { value: "vs", label: "Light" },
+  { value: "vs-dark", label: "Dark" },
+  { value: "hc-light", label: "High contrast light" },
+  { value: "hc-black", label: "High contrast dark" },
+]
+
+export const FONT_SIZES = [11, 12, 13, 14, 15, 16].map((n) => ({
+  value: String(n),
+  label: `${n}px`,
+}))
 
 const KEY = "email-builder:editor"
 const listeners = new Set<() => void>()
@@ -45,6 +61,9 @@ function read(): EditorPrefs {
       typeof saved.minimap === "boolean"
         ? saved.minimap
         : EDITOR_DEFAULTS.minimap,
+    editorTheme: EDITOR_THEMES.some((t) => t.value === saved.editorTheme)
+      ? (saved.editorTheme as string)
+      : EDITOR_DEFAULTS.editorTheme,
     aiKey:
       typeof saved.aiKey === "string" ? saved.aiKey : EDITOR_DEFAULTS.aiKey,
     aiModel:
