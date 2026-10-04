@@ -6,6 +6,7 @@ import {
   useState,
   type ComponentType,
   type FormEvent,
+  type ReactNode,
 } from "react"
 import {
   Bold,
@@ -22,6 +23,10 @@ import { Tip } from "@/components/tip"
 import { safeUrl } from "@/lib/email"
 import { serializeRich } from "@/lib/rich"
 
+// Drag payloads (palette items and layer-tree rows) use this dataTransfer type.
+export const DRAG_TYPE = "application/x-email-block"
+export type DropMode = "before" | "after" | "inside"
+
 export type SlashCommand = {
   key: string
   label: string
@@ -36,6 +41,12 @@ type Props = {
   commands: SlashCommand[]
   // replace: the "/" was typed into an otherwise empty block, so swap that block out.
   onCommand: (key: string, blockId: string, replace: boolean) => void
+  // A palette item or block dropped on the preview. targetId null = the end of the email.
+  onDrop: (payload: string, targetId: string | null, mode: DropMode) => void
+  // Keydowns inside the frame, for app shortcuts (they don't reach the parent window).
+  onKey: (e: KeyboardEvent) => void
+  // Shown just above the selected block (block actions).
+  toolbar?: ReactNode
   className?: string
 }
 
@@ -123,6 +134,7 @@ export function EditablePreview({ className, ...props }: Props) {
     setSlashState(s)
   }
   const doc = () => frame.current?.contentDocument ?? null
+  const attached = useRef<Document | null>(null)
 
   // Frame-viewport rect -> position inside our wrapper.
   const toPos = (r: DOMRect): Pos => {
@@ -136,6 +148,29 @@ export function EditablePreview({ className, ...props }: Props) {
       width: r.width,
     }
   }
+
+  // Where the selected block is, for the toolbar.
+  const [selPos, setSelPos] = useState<Pos | null>(null)
+  const placeToolbar = () => {
+    const id = latest.current.selected
+    const el = id
+      ? doc()?.querySelector(`[data-block="${CSS.escape(id)}"]`)
+      : null
+    const pos = el ? toPos(el.getBoundingClientRect()) : null
+    // Hidden while the block is scrolled out of view.
+    const h = wrap.current?.clientHeight ?? Infinity
+    setSelPos(pos && pos.bottom > 0 && pos.top < h ? pos : null)
+  }
+  const placeRef = useRef(placeToolbar)
+  useEffect(() => {
+    placeRef.current = placeToolbar
+  })
+  // The frame resizes with the preview size controls and the window.
+  useEffect(() => {
+    const ro = new ResizeObserver(() => placeRef.current())
+    if (frame.current) ro.observe(frame.current)
+    return () => ro.disconnect()
+  }, [])
 
   const { html, selected } = props
   useEffect(() => {
@@ -156,6 +191,8 @@ export function EditablePreview({ className, ...props }: Props) {
         d.getSelection()?.addRange(r)
       }
     }
+    placeToolbar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- placeToolbar reads refs only
   }, [html, selected])
 
   // --- Bubble menu (formatting the selection) ---
@@ -268,9 +305,73 @@ export function EditablePreview({ className, ...props }: Props) {
     latest.current.onCommand(cmd.key, t.blockId, empty)
   }
 
+  // --- Drag and drop ---
+
+  // Where a drop at this point would go: inside an empty container, else before/after the block under it.
+  const dropTarget = (d: Document, e: DragEvent) => {
+    const el = (e.target as Element | null)?.closest?.<HTMLElement>(
+      "[data-block]"
+    )
+    if (!el) return null
+    const empty =
+      el.hasAttribute("data-container") && !el.querySelector("[data-block]")
+    const r = el.getBoundingClientRect()
+    const mode: DropMode = empty
+      ? "inside"
+      : e.clientY < r.top + r.height / 2
+        ? "before"
+        : "after"
+    return { el, mode }
+  }
+  const clearDrop = (d: Document) =>
+    d
+      .querySelectorAll(
+        "[data-drop-before],[data-drop-after],[data-drop-inside]"
+      )
+      .forEach((el) => {
+        el.removeAttribute("data-drop-before")
+        el.removeAttribute("data-drop-after")
+        el.removeAttribute("data-drop-inside")
+      })
+
   // --- Frame events ---
 
   const listen = (d: Document) => {
+    // Canvas mode: blocks carry draggable="true"; dragging one moves it.
+    d.addEventListener("dragstart", (e) => {
+      const el = (e.target as Element | null)?.closest?.<HTMLElement>(
+        "[data-block][draggable=true]"
+      )
+      if (!el || !e.dataTransfer) return
+      e.dataTransfer.setData(
+        DRAG_TYPE,
+        JSON.stringify({ id: el.dataset.block })
+      )
+      e.dataTransfer.effectAllowed = "move"
+    })
+    d.addEventListener("dragover", (e) => {
+      if (!e.dataTransfer?.types.includes(DRAG_TYPE)) return
+      e.preventDefault()
+      clearDrop(d)
+      const t = dropTarget(d, e)
+      t?.el.setAttribute(`data-drop-${t.mode}`, "")
+    })
+    d.addEventListener("dragleave", (e) => {
+      if (!e.relatedTarget) clearDrop(d)
+    })
+    d.addEventListener("drop", (e) => {
+      const payload = e.dataTransfer?.getData(DRAG_TYPE)
+      clearDrop(d)
+      if (!payload) return
+      e.preventDefault()
+      const t = dropTarget(d, e)
+      latest.current.onDrop(
+        payload,
+        t?.el.dataset.block ?? null,
+        t?.mode ?? "inside"
+      )
+    })
+
     d.execCommand("styleWithCSS", false, "false") // <b>/<i> tags, not inline styles
 
     d.addEventListener("click", (e) => {
@@ -332,6 +433,7 @@ export function EditablePreview({ className, ...props }: Props) {
         }
       }
       if (e.key === "Escape") (e.target as HTMLElement).blur?.()
+      latest.current.onKey(e)
     })
 
     // Paste as plain text so outside markup never enters the email.
@@ -346,6 +448,7 @@ export function EditablePreview({ className, ...props }: Props) {
     })
 
     d.addEventListener("selectionchange", updateBubble)
+    d.addEventListener("scroll", () => placeRef.current())
     d.addEventListener("scroll", () => {
       setSlash(null)
       setBubble(null)
@@ -360,6 +463,21 @@ export function EditablePreview({ className, ...props }: Props) {
     )
   }
 
+  // Once per srcdoc document. The frame can finish loading before React hydrates and misses
+  // onLoad, so the mount effect below attaches too.
+  const attach = () => {
+    const d = doc()
+    if (!d || d === attached.current || d.location.href !== "about:srcdoc")
+      return
+    attached.current = d
+    listen(d)
+    render(d, latest.current.html, latest.current.selected, false)
+  }
+  const attachRef = useRef(attach)
+  useEffect(() => {
+    if (doc()?.readyState === "complete") attachRef.current()
+  }, [])
+
   const items = slash ? filterCommands(props.commands, slash.query) : []
 
   return (
@@ -371,14 +489,19 @@ export function EditablePreview({ className, ...props }: Props) {
         title="Email preview. Click text to edit it, select text to format it, or type / to add a block."
         srcDoc={BLANK}
         sandbox="allow-same-origin"
-        onLoad={() => {
-          const d = doc()
-          if (!d) return
-          listen(d)
-          render(d, latest.current.html, latest.current.selected, false)
-        }}
+        onLoad={attach}
         className={className}
       />
+
+      {props.toolbar && selPos && (
+        <div
+          className="absolute z-10 -translate-y-full pb-1"
+          style={{ top: Math.max(selPos.top, 32), left: selPos.left }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          {props.toolbar}
+        </div>
+      )}
 
       {bubble && (
         <div

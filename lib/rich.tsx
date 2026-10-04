@@ -32,7 +32,7 @@ const decode = (t: string) =>
   t.replace(/&(amp|lt|gt|quot|#39|nbsp);/g, (_, e: string) => ENTITIES[e])
 export const escapeText = (t: string) =>
   t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
-const escapeAttr = (t: string) => escapeText(t).replace(/"/g, "&quot;")
+export const escapeAttr = (t: string) => escapeText(t).replace(/"/g, "&quot;")
 
 export function parseInline(s: string): Inline[] {
   const root: Inline[] = []
@@ -67,9 +67,12 @@ const lines = (t: string, key: string) =>
     .flatMap((line, i) => (i ? [<br key={`${key}-${i}`} />, line] : [line]))
 
 // `safeUrl` is passed in so this module stays free of the email model.
+// Links get the surrounding text's color (underlined) when `linkColor` is given, so they stay
+// readable on any background instead of falling back to the client's default blue.
 export function renderInline(
   s: string,
-  safeUrl: (u: string) => string | undefined
+  safeUrl: (u: string) => string | undefined,
+  linkColor?: string
 ): ReactNode[] {
   const render = (nodes: Inline[], key: string): ReactNode[] =>
     nodes.flatMap((n, i): ReactNode[] => {
@@ -83,7 +86,15 @@ export function renderInline(
       const href = n.href && safeUrl(n.href)
       return href
         ? [
-            <a key={k} href={href}>
+            <a
+              key={k}
+              href={href}
+              style={
+                linkColor
+                  ? { color: linkColor, textDecoration: "underline" }
+                  : undefined
+              }
+            >
               {children}
             </a>,
           ]

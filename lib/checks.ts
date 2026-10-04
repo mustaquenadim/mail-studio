@@ -1,5 +1,14 @@
-import { isContainer, safeUrl, type Block, type EmailDoc } from "./email"
+import {
+  allBlocks,
+  isContainer,
+  pairs,
+  safeUrl,
+  type Block,
+  type EmailDoc,
+} from "./email"
 import { links, plainText } from "./rich"
+
+export { allBlocks }
 
 export type Level = "error" | "warning" | "info"
 export type Finding = {
@@ -9,9 +18,6 @@ export type Finding = {
   detail?: string // secondary text, e.g. caniemail notes
   href?: string // "Learn more" link
 }
-
-export const allBlocks = (blocks: Block[]): Block[] =>
-  blocks.flatMap((b) => [b, ...(isContainer(b) ? allBlocks(b.children) : [])])
 
 // Every http(s) URL the email loads or links to, with the block it's in (for the network check).
 export type UrlTarget = { url: string; kind: "link" | "image"; blockId: string }
@@ -28,6 +34,10 @@ export function urlTargets(doc: EmailDoc): UrlTarget[] {
       add(b.href, "link")
     }
     if (b.type === "button") add(b.href, "link")
+    if ("bgImage" in b && b.bgImage.trim()) add(b.bgImage, "image")
+    if (b.type === "carousel")
+      b.images.split("\n").forEach((u) => u.trim() && add(u, "image"))
+    for (const url of plainLinks(b)) add(url, "link")
     const rich =
       "items" in b
         ? b.items
@@ -40,6 +50,12 @@ export function urlTargets(doc: EmailDoc): UrlTarget[] {
   }
   return out
 }
+
+// URLs in "Label | url" list fields (navbar, social).
+const plainLinks = (b: Block) =>
+  b.type === "navbar" || b.type === "social"
+    ? pairs(b.type === "navbar" ? b.links : b.networks).map(([, u]) => u)
+    : []
 
 // WCAG relative luminance and contrast ratio for #rrggbb colors.
 function luminance(hex: string) {
@@ -156,8 +172,45 @@ export function lint(doc: EmailDoc, html: string): Finding[] {
             )
           break
         case "section":
-          if (!b.children.length) add("info", "Section is empty.")
+        case "wrapper":
+        case "hero":
+          if (!b.children.length)
+            add(
+              "info",
+              `${b.type[0].toUpperCase() + b.type.slice(1)} is empty.`
+            )
+          if (b.type !== "wrapper" && b.bgImage.trim() && !safeUrl(b.bgImage))
+            add("error", "Background image URL isn't a valid https:// URL.")
           visit(b.children, b.bg)
+          break
+        case "navbar":
+        case "social":
+          for (const [label, url] of pairs(
+            b.type === "navbar" ? b.links : b.networks
+          )) {
+            if (!safeUrl(url))
+              add("error", `"${label}" has no valid http(s) or mailto link.`)
+            warnInsecure(url, `"${label}" link`)
+          }
+          break
+        case "carousel": {
+          const urls = b.images.split("\n").filter((u) => u.trim())
+          if (!urls.length) add("warning", "Carousel has no images.")
+          if (urls.some((u) => !safeUrl(u)))
+            add("error", "A carousel image has no valid https:// URL.")
+          if (urls.length > 1)
+            add(
+              "info",
+              "Carousels only rotate in Apple Mail and a few others; Gmail and Outlook show the first image."
+            )
+          break
+        }
+        case "raw":
+          if (/<script/i.test(b.html))
+            add(
+              "error",
+              "Raw HTML contains <script>. Email clients strip or block scripts."
+            )
           break
         case "columns":
           b.children.forEach((c) => {
@@ -261,6 +314,7 @@ export function spam(doc: EmailDoc, text: string): Finding[] {
 
   const urls = blocks.flatMap((b) => [
     ...("href" in b && b.href ? [b.href] : []),
+    ...plainLinks(b),
     ...("body" in b && b.type !== "code" ? links(b.body) : []),
     ...("items" in b ? links(b.items) : []),
     ...("text" in b && b.type !== "button" ? links(b.text) : []),

@@ -29,7 +29,7 @@ import { compatibilityFindings, type CaniData } from "@/lib/compat"
 import { toReact, toText, type EmailDoc } from "@/lib/email"
 import type { UrlResult } from "@/lib/url-check"
 
-type Tab = "linter" | "compat" | "spam" | "resend"
+type Tab = "linter" | "compat" | "spam" | "send"
 
 const LEVEL = {
   error: { icon: CircleX, className: "text-destructive" },
@@ -122,28 +122,119 @@ function Bar({ children }: { children: React.ReactNode }) {
   )
 }
 
-function ResendForm({ html, text }: { html: string; text: string }) {
+type SendMode = "ethereal" | "smtp" | "resend"
+const MODES: { id: SendMode; label: string; note: string }[] = [
+  {
+    id: "ethereal",
+    label: "Test inbox",
+    note: "Sends to a throwaway Ethereal inbox. Nothing is delivered; you get a link to view the message.",
+  },
+  { id: "smtp", label: "SMTP", note: "Sends through any SMTP server." },
+  {
+    id: "resend",
+    label: "Resend",
+    note: "Leave the key empty to use RESEND_API_KEY from .env.local.",
+  },
+]
+const SMTP_PRESETS = [
+  { label: "Gmail", host: "smtp.gmail.com", port: 465, secure: true },
+  { label: "Outlook", host: "smtp.office365.com", port: 587, secure: false },
+  { label: "QQ Mail", host: "smtp.qq.com", port: 465, secure: true },
+  { label: "Aliyun", host: "smtpdm.aliyun.com", port: 465, secure: true },
+  { label: "SendGrid", host: "smtp.sendgrid.net", port: 587, secure: false },
+  { label: "Mailgun", host: "smtp.mailgun.org", port: 587, secure: false },
+  {
+    label: "Amazon SES",
+    host: "email-smtp.us-east-1.amazonaws.com",
+    port: 587,
+    secure: false,
+  },
+]
+const RECENT_KEY = "email-builder:recipients"
+const readRecent = (): string[] => {
+  try {
+    const v: unknown = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]")
+    return Array.isArray(v) ? v.filter((x) => typeof x === "string") : []
+  } catch {
+    return []
+  }
+}
+
+// Credentials live in this component's state only; they're sent with the request and never saved.
+function SendForm({
+  html,
+  text,
+  defaultSubject,
+}: {
+  html: string
+  text: string
+  defaultSubject: string
+}) {
+  const [mode, setMode] = useState<SendMode>("ethereal")
   const [to, setTo] = useState("")
-  const [subject, setSubject] = useState("Test email")
-  const [status, setStatus] = useState<{ ok: boolean; message: string } | null>(
-    null
-  )
+  const [subject, setSubject] = useState(defaultSubject || "Test email")
+  const [from, setFrom] = useState("")
+  const [resendKey, setResendKey] = useState("")
+  const [smtp, setSmtp] = useState({
+    host: "",
+    port: "587",
+    secure: false,
+    user: "",
+    pass: "",
+  })
+  const [recent, setRecent] = useState<string[]>([])
+  const [status, setStatus] = useState<{
+    ok: boolean
+    message: string
+    url?: string
+  } | null>(null)
   const [sending, setSending] = useState(false)
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time read from browser storage
+  useEffect(() => setRecent(readRecent()), [])
 
   const send = async (e: FormEvent) => {
     e.preventDefault()
+    const list = to
+      .split(/[,;\s]+/)
+      .map((t) => t.trim())
+      .filter(Boolean)
     setSending(true)
     setStatus(null)
     try {
       const res = await fetch("/api/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to, subject, html, text }),
+        body: JSON.stringify({
+          mode,
+          to: list,
+          subject,
+          from,
+          html,
+          text,
+          ...(mode === "resend" && { resendKey }),
+          ...(mode === "smtp" && {
+            smtp: { ...smtp, port: Number(smtp.port) },
+          }),
+        }),
       })
-      const data = (await res.json()) as { id?: string; error?: string }
+      const data = (await res.json()) as {
+        error?: string
+        previewUrl?: string
+      }
+      if (res.ok) {
+        const next = [to.trim(), ...recent.filter((r) => r !== to.trim())]
+        setRecent(next.slice(0, 8))
+        try {
+          localStorage.setItem(RECENT_KEY, JSON.stringify(next.slice(0, 8)))
+        } catch {}
+      }
       setStatus(
         res.ok
-          ? { ok: true, message: `Sent to ${to}.` }
+          ? {
+              ok: true,
+              message: `Sent to ${list.join(", ")}.`,
+              url: data.previewUrl,
+            }
           : { ok: false, message: data.error ?? "Sending failed." }
       )
     } catch {
@@ -153,34 +244,185 @@ function ResendForm({ html, text }: { html: string; text: string }) {
     }
   }
 
+  const field = (
+    id: string,
+    label: string,
+    input: React.ReactNode,
+    className = "min-w-40 flex-1"
+  ) => (
+    <div className={cn("flex flex-col gap-1.5", className)}>
+      <Label htmlFor={id}>{label}</Label>
+      {input}
+    </div>
+  )
+  const setS = (p: Partial<typeof smtp>) => setSmtp((s) => ({ ...s, ...p }))
+
   return (
     <form onSubmit={send} className="flex flex-col gap-3 px-2 text-sm">
-      <p className="text-xs text-muted-foreground">
-        Sends a test through Resend using <code>RESEND_API_KEY</code> from{" "}
-        <code>.env.local</code>. Works in development only.
-      </p>
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="flex min-w-48 flex-1 flex-col gap-1.5">
-          <Label htmlFor="resend-to">To</Label>
-          <Input
-            id="resend-to"
-            type="email"
-            required
-            placeholder="you@example.com"
-            value={to}
-            onChange={(e) => setTo(e.target.value)}
-          />
+      <div className="flex flex-wrap items-center gap-2">
+        <div
+          role="radiogroup"
+          aria-label="Send with"
+          className="flex items-center gap-0.5 rounded-lg border p-0.5"
+        >
+          {MODES.map((m) => (
+            <Button
+              key={m.id}
+              type="button"
+              size="sm"
+              role="radio"
+              aria-checked={mode === m.id}
+              variant={mode === m.id ? "secondary" : "ghost"}
+              onClick={() => setMode(m.id)}
+            >
+              {m.label}
+            </Button>
+          ))}
         </div>
-        <div className="flex min-w-48 flex-1 flex-col gap-1.5">
-          <Label htmlFor="resend-subject">Subject</Label>
+        <p className="text-xs text-muted-foreground">
+          {MODES.find((m) => m.id === mode)?.note} Works in development only;
+          credentials are sent with this request and never saved.
+        </p>
+      </div>
+
+      {mode === "smtp" && (
+        <div className="flex flex-wrap items-end gap-3">
+          {field(
+            "smtp-preset",
+            "Preset",
+            <select
+              id="smtp-preset"
+              className="h-8 rounded-lg border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+              value=""
+              onChange={(e) => {
+                const p = SMTP_PRESETS.find((x) => x.label === e.target.value)
+                if (p)
+                  setS({ host: p.host, port: String(p.port), secure: p.secure })
+              }}
+            >
+              <option value="">Choose…</option>
+              {SMTP_PRESETS.map((p) => (
+                <option key={p.label}>{p.label}</option>
+              ))}
+            </select>,
+            "w-32"
+          )}
+          {field(
+            "smtp-host",
+            "Host",
+            <Input
+              id="smtp-host"
+              required
+              value={smtp.host}
+              onChange={(e) => setS({ host: e.target.value })}
+            />
+          )}
+          {field(
+            "smtp-port",
+            "Port",
+            <Input
+              id="smtp-port"
+              required
+              inputMode="numeric"
+              value={smtp.port}
+              onChange={(e) =>
+                setS({ port: e.target.value.replace(/\D/g, "") })
+              }
+            />,
+            "w-20"
+          )}
+          <label className="flex h-8 items-center gap-2">
+            <input
+              type="checkbox"
+              checked={smtp.secure}
+              onChange={(e) => setS({ secure: e.target.checked })}
+            />
+            SSL/TLS
+          </label>
+          {field(
+            "smtp-user",
+            "User",
+            <Input
+              id="smtp-user"
+              autoComplete="off"
+              value={smtp.user}
+              onChange={(e) => setS({ user: e.target.value })}
+            />
+          )}
+          {field(
+            "smtp-pass",
+            "Password",
+            <Input
+              id="smtp-pass"
+              type="password"
+              autoComplete="off"
+              value={smtp.pass}
+              onChange={(e) => setS({ pass: e.target.value })}
+            />
+          )}
+        </div>
+      )}
+      {mode === "resend" &&
+        field(
+          "resend-key",
+          "Resend API key",
           <Input
-            id="resend-subject"
+            id="resend-key"
+            type="password"
+            autoComplete="off"
+            placeholder="re_… (optional)"
+            value={resendKey}
+            onChange={(e) => setResendKey(e.target.value)}
+          />,
+          "max-w-sm"
+        )}
+
+      <div className="flex flex-wrap items-end gap-3">
+        {field(
+          "send-to",
+          "To (comma-separated, up to 10)",
+          <>
+            <Input
+              id="send-to"
+              required
+              list="send-recent"
+              placeholder="you@example.com"
+              value={to}
+              onChange={(e) => setTo(e.target.value)}
+            />
+            <datalist id="send-recent">
+              {recent.map((r) => (
+                <option key={r} value={r} />
+              ))}
+            </datalist>
+          </>,
+          "min-w-48 flex-1"
+        )}
+        {mode !== "ethereal" &&
+          field(
+            "send-from",
+            "From",
+            <Input
+              id="send-from"
+              placeholder={
+                mode === "smtp" ? "Defaults to the SMTP user" : "Optional"
+              }
+              value={from}
+              onChange={(e) => setFrom(e.target.value)}
+            />
+          )}
+        {field(
+          "send-subject",
+          "Subject",
+          <Input
+            id="send-subject"
             required
             maxLength={200}
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
-          />
-        </div>
+          />,
+          "min-w-48 flex-1"
+        )}
         <Button type="submit" disabled={sending}>
           <Send />
           {sending ? "Sending…" : "Send test"}
@@ -195,7 +437,18 @@ function ResendForm({ html, text }: { html: string; text: string }) {
             : "text-destructive"
         )}
       >
-        {status?.message}
+        {status?.message}{" "}
+        {status?.url && (
+          <a
+            href={status.url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 underline underline-offset-2"
+          >
+            View the message
+            <ExternalLink className="size-3" />
+          </a>
+        )}
       </p>
     </form>
   )
@@ -367,7 +620,7 @@ export function BottomPanel({
       n: count(results.spam) + (spamRun?.value.isSpam ? 1 : 0),
       errors: !!spamRun?.value.isSpam,
     },
-    { id: "resend", label: "Resend" },
+    { id: "send", label: "Send" },
   ]
   const stale = (run: Run<unknown> | null) =>
     run &&
@@ -602,8 +855,12 @@ export function BottomPanel({
             <Findings findings={results.spam} onSelect={onSelect} />
           </TabsContent>
 
-          <TabsContent value="resend">
-            <ResendForm html={html} text={text} />
+          <TabsContent value="send">
+            <SendForm
+              html={html}
+              text={text}
+              defaultSubject={doc.settings.subject}
+            />
           </TabsContent>
         </div>
       )}
