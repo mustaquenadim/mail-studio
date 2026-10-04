@@ -4,6 +4,7 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@/lib/utils"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { ClarityInit } from "@/components/clarity"
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" })
 
@@ -29,6 +30,7 @@ export default function RootLayout({
       )}
     >
       <body>
+        <ClarityInit />
         <ThemeProvider>
           <TooltipProvider>{children}</TooltipProvider>
         </ThemeProvider>
