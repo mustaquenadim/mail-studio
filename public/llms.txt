@@ -1,0 +1,20 @@
+# Mail Studio
+
+> Mail Studio is a free, browser-based visual email builder for designing responsive HTML emails, made by Mustaque Nadim (https://mustaquenadim.com). No account needed; work is saved in the browser.
+
+## What it does
+
+- Drag-and-drop canvas with blocks: headings, text, lists, images, buttons, dividers, spacers and 2–4 column layouts.
+- In-place rich text editing; type "/" to insert a block.
+- AI template generation from a text prompt.
+- Starter templates: Welcome Email, Newsletter, Marketing Promo, Account Notification, plus color themes.
+- Desktop, tablet and mobile previews.
+- Email client compatibility checks based on caniemail.com data, plus broken-link checks.
+- Code view and export to HTML, MJML and Markdown; import from HTML, MJML and Markdown.
+- Send test emails through a test inbox, any SMTP server (Gmail, Outlook, SendGrid, Mailgun presets) or Resend.
+
+## FAQ
+
+- Is Mail Studio free? Yes, it runs in the browser with no sign-up.
+- Can I export the email? Yes, as inline-styled HTML, MJML or Markdown.
+- Will my email render in Outlook and Gmail? The built-in compatibility check flags CSS and HTML features unsupported by major email clients.
